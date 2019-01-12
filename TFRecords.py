@@ -53,7 +53,8 @@ class GenTFRecords:
             bytes_data = img.tobytes()
 
             if gen_class_label:
-                label = int(image.split('_')[-1].split('.')[0])
+                # label = int(image.split('_')[-1].split('.')[0])  # 这里有个很奇怪的错误提示（虽然并不会错，为了美观，见下）
+                label = int(str(image.split('_')[-1]).split('.')[0])  # 那这样呢...
                 example = tf.train.Example(
                     features=tf.train.Features(
                         feature={  # 创建了一个字典，读的时候按照字典键读取对应的值
