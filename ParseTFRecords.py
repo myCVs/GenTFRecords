@@ -2,23 +2,12 @@ import tensorflow as tf
 
 
 class ImageDataReading:
-    def __init__(self, file_path, batch_size=1, epochs=1, shuffle=False):
+    def __init__(self, file_path, batch_size=1, epochs=1, shuffle=False, fixed=True, features=None):
         """
         :param file_path: tfrecords 文件地址
         :param batch_size: 清晰明了
         :param epochs: 同上
         :param shuffle: 混洗数据
-        """
-        self._path = file_path
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.shuffle = shuffle
-
-    @staticmethod
-    def _parse_tfrecords_file(example_proto, fixed=True, features=None):
-        """
-        解析 tfrecords 文件结构，数据集格式固定，按照该固定格式进行解析即可
-        :param example_proto: protocol buffer message
         :param fixed: 使用固定解析格式？
         :param features: features
                          features={
@@ -26,9 +15,21 @@ class ImageDataReading:
                             key2: ...
                             ...
                          }
+        """
+        self._path = file_path
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self._shuffle = shuffle
+        self._fixed = fixed
+        self._features = features
+
+    def _parse_tfrecords_file(self, example_proto):
+        """
+        解析 tfrecords 文件结构，数据集格式固定，按照该固定格式进行解析即可
+        :param example_proto: protocol buffer message
         :return: 解析后的 batch 列表，列表按顺序是 features 中的键值顺序
         """
-        if fixed:
+        if self._fixed:
             features = {
                 'img_shape': tf.FixedLenFeature((3,), dtype=tf.int64),
                 'img_data': tf.FixedLenFeature((), dtype=tf.string)
@@ -38,10 +39,10 @@ class ImageDataReading:
 
             return parsed_dict['img_shape'], image_data
         else:
-            parsed_dict = tf.parse_single_example(example_proto, features=features)
+            parsed_dict = tf.parse_single_example(example_proto, features=self._features)
 
             val = []
-            keys = list(features.keys())
+            keys = list(self._features.keys())
             for key in keys:
                 if key == 'img_data':
                     image_data = tf.decode_raw(parsed_dict['img_data'], out_type=tf.uint8)
@@ -57,7 +58,7 @@ class ImageDataReading:
         :return: 返回 Dataset
         """
         data_set = tf.data.TFRecordDataset(self._path).map(self._parse_tfrecords_file)
-        if self.shuffle:
+        if self._shuffle:
             data_set = data_set.shuffle(1000).repeat(self.epochs).batch(self.batch_size, drop_remainder=True)
             return data_set
         else:
